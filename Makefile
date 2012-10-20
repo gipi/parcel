@@ -2,14 +2,10 @@ init:
 	python setup.py develop
 	pip install -r requirements.txt
 
+tests: test
+
 test:
-	nosetests ./tests/*
-
-lazy:
-	nosetests --with-color tests/test_requests.py
-
-simple:
-	nosetests tests/test_requests.py
+	nosetests ./tests/*.py
 
 docs:
 	cd docs; make dirhtml
