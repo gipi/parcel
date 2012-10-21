@@ -57,4 +57,3 @@ it's installed in that path. If it's a relative path like this setting, it is in
 build users home directory. So in our case it will be "~/webapps". So, for instance, if we were to build the package as
 user apache on debian (pass `-u apache` into our fab call), then the package would be installed under /var/www/webapps.
 
-

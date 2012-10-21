@@ -7,6 +7,7 @@ from . import distro
 
 class Deployment(object):
     virtual = "vp"
+    build_dir = '.parcel'
 
     def __init__(self, app_name, build_deps=[], run_deps=[], path=".", base=None,arch=distro.Debian()):
         """app_name: the package name
@@ -19,12 +20,13 @@ class Deployment(object):
         arch: the architecture of the build host
         """
         self.arch = arch
+        remotehome = run('echo $HOME').strip()
         
         # if path isn't set, make it the home directory of the build user
         if base is None:
-            base = run('echo $HOME')
+            base = remotehome
         elif not base.startswith('/'):
-            base = os.path.join(run('echo $HOME'), base)
+            base = os.path.join(remotehome, base)
         
         # update and install missing build dependency packages
         arch.update_packages()
@@ -42,7 +44,17 @@ class Deployment(object):
         self.path = os.path.realpath(path)
 
 	    # the path we build everything on on the remote host
-        self.app_path = os.path.join(base,'%s-%s'%(self.pkg_name,self.version))
+        self.base_path = os.path.join(remotehome,self.build_dir)
+        
+        # the path the app will be installed into
+        self.app_path = os.path.join(self.base_path,base,'%s-%s'%(self.pkg_name,self.version))
+        
+        # the build path
+        self.build_path = os.path.join(self.base_path, self.app_path[1:])                # cut the first / off app_path
+        
+        print "BASE_PATH",self.base_path
+        print "APP PATH",self.app_path
+        print "BUILD PATH",self.build_path
         
     def prepare_app(self, branch=None, requirements="requirements.txt"):
         """creates the necessary directories on the build server, checks out the desired branch (None means current),
@@ -51,8 +63,8 @@ class Deployment(object):
         
         # theres no revision control atm so... just copy directory over
         #put(self.path, self.app_path)
-        run('mkdir -p "%s"'%self.app_path)
-        local("rsync -av '%s/' '%s@%s:%s'"%(self.path,env.user,env.host,self.app_path))
+        run('mkdir -p "%s"'%self.build_path)
+        local("rsync -av '%s/' '%s@%s:%s'"%(self.path,env.user,env.host,self.build_path))
         
         self.venv_path = os.path.join(self.app_path, self.virtual)
         run('virtualenv %s'%(self.venv_path))
@@ -60,7 +72,7 @@ class Deployment(object):
             run('PIP_DOWNLOAD_CACHE="%s" %s install -r %s'%(
                 self.arch.pip_download_cache,
 	            os.path.join(self.venv_path, 'bin/pip'),
-	            os.path.join(self.app_path, requirements))
+	            os.path.join(self.build_path, requirements))
             )
             
     def compile_python(self):
@@ -75,7 +87,7 @@ class Deployment(object):
         """takes the whole app including the virtualenv, packages it using fpm and downloads it to my local host.
 	    The version of the package is the build number - which is just the latest package version in our Ubuntu repositories plus one.
 	    """
-        with cd(self.app_path):
+        with cd(self.base_path):
             self.run_deps.append('python-virtualenv')                   
             deps_str = '-d ' + ' -d '.join(self.run_deps)
             dirs_str = self.app_path
