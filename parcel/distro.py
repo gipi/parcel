@@ -1,6 +1,12 @@
 import os.path
 
-from fabric.api import settings, run, cd, lcd, put, get, local, env, with_settings
+from fabric.api import (
+    settings,
+    run,
+    cd, lcd,
+    put, get, local,
+    env, with_settings,
+)
 from fabric.contrib.files import append
 from fabric.colors import green
 
@@ -14,6 +20,7 @@ from .defaults import centos as centos_defaults
 # Used to represent the remote build distribution
 #
 
+
 class Distro(object):
     space = '.parcel-build-temp'
     pip_download_cache = '/tmp/pip-download-cache/'
@@ -22,7 +29,7 @@ class Distro(object):
         pass
 
     def mkdir(self, remote):
-        return run('mkdir -p "%s" && cd "%s" && pwd'%(remote,remote))
+        return run('mkdir -p "%s" && cd "%s" && pwd' % (remote, remote))
 
     def update_packages(self):
         """This method should update the packages on the remote box.
@@ -34,18 +41,18 @@ class Distro(object):
         """
         raise NotImplementedError
 
-    def version(self,package):
+    def version(self, package):
         """Look at the distro's packaging system for the package and return a version"""
         raise NotImplementedError
-	
-    def push_files(self,pathlist,dst):
+
+    def push_files(self, pathlist, dst):
         for path in pathlist:
-            put(path, os.path.join(dst,os.path.basename(path)))
-    	
+            put(path, os.path.join(dst, os.path.basename(path)))
+
     def check(self):
         """Check the remote build host to see if the relevant software to build packages is installed"""
         raise NotImplementedError
-    
+
     def setup(self):
         """This method should set up a remote box for parcel package building.
         It should install fpm.
@@ -59,7 +66,7 @@ class Distro(object):
         raise NotImplementedError
 
     def _cleanup(self):
-        run("rm -rf '%s'"%self.space)  
+        run("rm -rf '%s'" % self.space)
 
     def _setup(self, clean=True):
         # first cleanup any broken stale previous builds
@@ -68,7 +75,7 @@ class Distro(object):
 
         # make fresh directories
         base_dir = self.mkdir(self.space)
-        src_dir = self.mkdir(os.path.abspath(os.path.join(self.space , "src")))
+        src_dir = self.mkdir(os.path.abspath(os.path.join(self.space, "src")))
         build_dir = self.mkdir(os.path.abspath(os.path.join(self.space, "build")))
         return base_dir, src_dir, build_dir
 
@@ -84,14 +91,14 @@ class Debian(Distro):
 
     def build_deps(self, deps):
         with settings(user='root'):
-            run("apt-get install -qq %s"%(' '.join(deps)))
+            run("apt-get install -qq %s" % (' '.join(deps)))
 
-    def version(self,package):
+    def version(self, package):
         """Look at the debian apt package system for a package with this name and return its version.
         Return None if there is no such package.
         """
         with settings(warn_only=True):
-            vstring = run('apt-cache show %s 2>/dev/null | sed -nr "s/^Version: ([0-9]+)(-.+)?/\\1/p"'%(package))
+            vstring = run('apt-cache show %s 2>/dev/null | sed -nr "s/^Version: ([0-9]+)(-.+)?/\\1/p"' % (package))
             if vstring.return_code:
                 # error fetching package info. Assume there is no such named package. Return None
                 return None
@@ -104,7 +111,7 @@ class Debian(Distro):
             result = run('which fpm')
             if result.return_code:
                 raise Exception("Build host does not have fpm installed and on the executable path")
-            
+
             # check for checkinstall
             result = run('which checkinstall')
             if result.return_code:
@@ -125,14 +132,14 @@ class Debian(Distro):
             ])
 
             base_dir, src_dir, build_dir = self._setup()
-            
+
             # get rubygems and copy it across
             path = cache.get("http://production.cf.rubygems.org/rubygems/rubygems-1.8.24.tgz")
-            self.push_files([path],src_dir)
+            self.push_files([path], src_dir)
             filename = os.path.basename(path)
-            
+
             with cd(build_dir):
-                run("tar xvfz ../src/%s"%filename)
+                run("tar xvfz ../src/%s" % filename)
                 with cd("rubygems-1.8.24"):
                     run("ruby setup.rb")
             run("gem1.8 install fpm")
@@ -143,22 +150,21 @@ class Debian(Distro):
         installation before using push_to_repo."""
         base_dir, src_dir, build_dir = debian._setup(clean=False)
         pkg_dir = self.mkdir(os.path.abspath(base_dir, "pkg_dir"))
-        rsync(pkg,pkg_dir)
+        rsync(pkg, pkg_dir)
         with cd(pkg_dir):
-            print green(append("/etc/apt/sources.list", "deb file://{0} /".format(pkg_dir))) 
+            print green(append("/etc/apt/sources.list", "deb file://{0} /".format(pkg_dir)))
             print green(run("dpkg-scanpackages . /dev/null | gzip -c -9 > Packages.gz"))
             pkg_name = run("dpkg -f {0} | grep '^Package: ' | sed -e 's/Package: //'".format(pkg))
             pkg_version = run("dpkg -f {0} | grep '^Version: ' | sed -e 's/Version: //'".format(pkg))
             print green(run("apt-get update -qq"))
-            print green(run("apt-get install {0}={1} -qq --allow-unauthenticated".format(pkg_name,pkg_version)))
-
+            print green(run("apt-get install {0}={1} -qq --allow-unauthenticated".format(pkg_name, pkg_version)))
 
     def build_package(self, deployment=None):
         """
         Runs architecture specific packaging tasks
         """
         assert deployment
-        
+
         with cd(deployment.root_path):
             rv = run(
                 'fpm -s dir -t deb -n {0.pkg_name} -v {0.version} '
@@ -171,7 +177,7 @@ class Debian(Distro):
 
             filename = rv.split('"')[-2]
             get(filename, './')
-            run("rm '%s'"%filename)
+            run("rm '%s'" % filename)
             print green(os.path.basename(filename))
 
 
@@ -197,9 +203,9 @@ class Centos(Distro):
 
     def build_deps(self, deps):
         with settings(user='root'):
-            run("yum install -y %s"%(' '.join(deps)))
+            run("yum install -y %s" % (' '.join(deps)))
 
-    def version(self,package):
+    def version(self, package):
         """Look at the debian apt package system for a package with this name and return its version.
         Return None if there is no such package.
         """
@@ -229,14 +235,14 @@ class Centos(Distro):
             run("yum install rubygems -y")
             run("gem install fpm")
             run("yum install rpm-build -y")
-            run("yum install rsync -y")            
+            run("yum install rsync -y")
 
     def build_package(self, deployment=None):
         """
         Runs architecture specific packaging tasks
         """
         assert deployment
-        
+
         with cd(deployment.root_path):
             rv = run(
                 'fpm -s dir -t rpm -n {0.pkg_name} -v {0.version} '
@@ -249,9 +255,8 @@ class Centos(Distro):
 
             filename = rv.split('"')[-2]
             get(filename, './')
-            run("rm '%s'"%filename)
+            run("rm '%s'" % filename)
             print green(os.path.basename(filename))
-
 
 
 # the distribution module instances

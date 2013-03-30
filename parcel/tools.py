@@ -18,7 +18,7 @@ def dl(url,filename):
         for data in r.iter_content(BLOCK_SIZE):
             fh.write(data)
 
-def rsync(sources,dest,rsync_ignore=None,color_files=True):
+def rsync(sources, dest, rsync_ignore=None, color_files=True):
     if type(sources)==str:
         sources = [sources]
     run('mkdir -p "%s"'%dest)
@@ -31,7 +31,7 @@ def rsync(sources,dest,rsync_ignore=None,color_files=True):
                 
     if rsync_ignore:
         if os.path.isfile(rsync_ignore):
-            command.append('--exclude-from=%s'%rsync_ignore)
+            command.append('--exclude-from=%s' % rsync_ignore)
     
     
     if not color_files:   
