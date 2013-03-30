@@ -68,8 +68,8 @@ class Distro(object):
 
         # make fresh directories
         base_dir = self.mkdir(self.space)
-        src_dir = self.mkdir(self.space+"/src")
-        build_dir = self.mkdir(self.space+"/build")
+        src_dir = self.mkdir(os.path.abspath(os.path.join(self.space , "src")))
+        build_dir = self.mkdir(os.path.abspath(os.path.join(self.space, "build")))
         return base_dir, src_dir, build_dir
 
 
@@ -135,7 +135,7 @@ class Debian(Distro):
         authentication. This method should be used for testing package
         installation before using push_to_repo."""
         base_dir, src_dir, build_dir = debian._setup(clean=False)
-        pkg_dir = self.mkdir(base_dir+"/pkg_dir")
+        pkg_dir = self.mkdir(os.path.abspath(base_dir, "pkg_dir"))
         rsync(pkg,pkg_dir)
         with cd(pkg_dir):
             print green(append("/etc/apt/sources.list", "deb file://{0} /".format(pkg_dir))) 
