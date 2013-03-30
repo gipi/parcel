@@ -115,7 +115,14 @@ class Debian(Distro):
         Installs fpm, easyinstall and some libraries.
         """
         with settings(user='root'):
-            self.build_deps(['libyaml-ruby','libzlib-ruby','ruby','ruby-dev','checkinstall'])
+            self.build_deps([
+                'libyaml-ruby',
+                'libzlib-ruby',
+                'ruby',
+                'ruby-dev',
+                'checkinstall',
+                'python-virtualenv',
+            ])
 
             base_dir, src_dir, build_dir = self._setup()
             
