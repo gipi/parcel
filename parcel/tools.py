@@ -26,6 +26,10 @@ def rsync(sources, dest, rsync_ignore=None, color_files=True):
     command = []
     command.append('rsync')
     command.append('-av')
+
+    if env.use_ssh_config:
+        command.append("--rsh='ssh -F %s'" % env.ssh_config_path)
+
     command.extend("'%s'"%s for s in sources)
     command.append("'%s@%s:%s'"%(env.user,env.host,dest))
                 
